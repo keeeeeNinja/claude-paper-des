@@ -1,0 +1,35 @@
+{
+  "name": "paper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts AdVideo out/ad-video.mp4",
+    "preview": "remotion preview src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keeeeeNinja/claude-paper-des.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/keeeeeNinja/claude-paper-des/issues"
+  },
+  "homepage": "https://github.com/keeeeeNinja/claude-paper-des#readme",
+  "dependencies": {
+    "@remotion/cli": "^4.0.432",
+    "@remotion/player": "^4.0.432",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.432"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
