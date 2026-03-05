@@ -6,10 +6,10 @@ export const RemotionRoot: React.FC = () => {
     <Composition
       id="AdVideo"
       component={AdVideo}
-      durationInFrames={450}
+      durationInFrames={486}
       fps={30}
-      width={1920}
-      height={1080}
+      width={1080}
+      height={1920}
     />
   );
 };

@@ -1,21 +1,25 @@
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, OffthreadVideo, Sequence, staticFile } from "remotion";
+
+const CLIP_DURATION_FRAMES = 162; // 5.4秒 × 30fps
+
+const clips = [
+  "scene1_商品フォーカス.mp4",
+  "scene2_女性×商品.mp4",
+  "scene3_シネマティック.mp4",
+];
 
 export const AdVideo: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: "white",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <h1 style={{ fontSize: 60 }}>広告動画テスト</h1>
-      <p>
-        フレーム: {frame} / 秒: {(frame / fps).toFixed(1)}
-      </p>
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      {clips.map((clip, i) => (
+        <Sequence
+          key={clip}
+          from={i * CLIP_DURATION_FRAMES}
+          durationInFrames={CLIP_DURATION_FRAMES}
+        >
+          <OffthreadVideo src={staticFile(clip)} />
+        </Sequence>
+      ))}
     </AbsoluteFill>
   );
 };
