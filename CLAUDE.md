@@ -56,6 +56,21 @@ Paper/
 - テキストエフェクト → `テキストエフェクトチュートリアル.md`
 - デザイン原則 → `デザインの極意書.md`
 
+## Paper MCP（デザイン作業）
+
+- **ツール**: Paper Desktop App + Paper MCP Server
+- **MCP URL**: `http://127.0.0.1:29979/mcp`（Claude Code に登録済み）
+- Paper Desktop が起動していないと MCP が動かない
+- セッションが長くなると接続が切れる → Claude Code を再起動して再接続
+
+### 作業フロー
+1. `get_basic_info` → `get_screenshot` で現状把握
+2. `get_tree_summary` / `get_selection` で対象ノード特定
+3. 修正方針をユーザーと確認してから実行
+4. `set_text_content` / `update_styles` / `write_html` で修正
+5. 2〜3操作ごとに `get_screenshot` でレビュー
+6. 完了後 `finish_working_on_nodes` を呼ぶ
+
 ## Notes
 - スキルは `skills/video-script/` が実体、`~/.claude/skills/video-script` はシンボリックリンク
 - スキルを変更したらこのリポジトリでコミット・プッシュするだけでOK
