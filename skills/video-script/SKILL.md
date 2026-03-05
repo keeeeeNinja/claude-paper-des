@@ -1,7 +1,7 @@
 ---
 name: video-script
 description: 作業中動画フォルダの動画を分析してショート動画用のテロップとナレーション原稿を生成する。フック・本題・行動喚起の3部構成。動画スクリプト、テロップ、ナレーション、ショート動画の原稿を作りたいときに使う。
-allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(cat *), Bash(conda *), Read, Write
+allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(conda *), Read, Write
 disable-model-invocation: true
 ---
 
@@ -32,7 +32,7 @@ disable-model-invocation: true
 
 ---
 
-### Step 2: ナレーションのペースと声のプリセットを選ぶ
+### Step 2: ナレーションのペースと話者を選ぶ
 
 ユーザーに以下を**まとめて**聞く:
 
@@ -41,11 +41,19 @@ disable-model-invocation: true
 2. 普通（自然な話し言葉）
 3. 早口（テンポよく・エネルギッシュ）
 
-**② 声のプリセットを選んでください:**
+**② 話者を選んでください（CustomVoiceモード・全員日本語対応）:**
 
-!`cat "/Users/keeee/Desktop/Dev/Qwen3-TTS/voice_presets.json"`
-
-プリセット名の一覧を表示する。
+| 番号 | 話者名 | 性別 |
+|------|--------|------|
+| 1 | Ono_Anna | 女性 |
+| 2 | Sohee | 女性 |
+| 3 | Vivian | 女性 |
+| 4 | Serena | 女性 |
+| 5 | Ryan | 男性 |
+| 6 | Aiden | 男性 |
+| 7 | Uncle_Fu | 男性 |
+| 8 | Dylan | 男性 |
+| 9 | Eric | 男性 |
 
 ユーザーの回答をもとに **ナレーション上限文字数** を決定する:
 - ゆっくり → 合計秒数 × 3
@@ -100,17 +108,17 @@ mkdir -p /tmp/video-script-frames && ffmpeg -i "VIDEO_PATH" -vf "fps=1/5,scale=6
 
 ### Step 5: 音声を生成し、動画尺に収まるか確認する
 
-Step 2 で選んだプリセットと Step 4 のナレーション本文で音声を生成する。
+Step 2 で選んだ話者と Step 4 のナレーション本文で音声を生成する。
 生成後に実際の長さを測り、動画尺を超えていたらナレーションを縮めて再生成する（**最大3回**）。
 
 #### 5-1. 音声を生成する
 
-`PRESET_NAME` と `NARRATION_TEXT` を実際の値に置き換えてBashで実行:
+`SPEAKER_NAME` と `NARRATION_TEXT` を実際の値に置き換えてBashで実行:
 
 ```
 conda run -n qwen3-tts-mlx python /Users/keeee/Desktop/Dev/Paper/scripts/generate_tts.py \
   --text "NARRATION_TEXT" \
-  --preset "PRESET_NAME" \
+  --speaker "SPEAKER_NAME" \
   --output "/Users/keeee/Desktop/Dev/Paper/作業中動画/narration.wav"
 ```
 
