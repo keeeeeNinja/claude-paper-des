@@ -1,13 +1,13 @@
 ---
 name: video-script
 description: 作業中動画フォルダの動画を分析してショート動画用のテロップとナレーション原稿を生成する。フック・本題・行動喚起の3部構成。動画スクリプト、テロップ、ナレーション、ショート動画の原稿を作りたいときに使う。
-allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Read, Write
+allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(cat *), Bash(conda *), Read, Write
 disable-model-invocation: true
 ---
 
 ## 動画スクリプト生成
 
-複数のクリップを繋いだ1本のショート動画用に、テロップとナレーション原稿を作成する。
+複数のクリップを繋いだ1本のショート動画用に、テロップとナレーション原稿を作成し、音声ファイルを生成する。
 
 ### 前提知識
 
@@ -73,6 +73,28 @@ mkdir -p /tmp/video-script-frames && ffmpeg -i "VIDEO_PATH" -vf "fps=1/5,scale=6
 - 生成後、必ず文字数をカウントして上限内に収まっていることを確認する。超えていたら削って上限内に収める
 
 保存後、「テロップとナレーション.md に保存しました（ナレーション〇〇文字／上限〇〇文字）」と伝える。
+
+### Step 4: 音声プリセットを選択する
+
+利用可能なプリセット一覧を表示する:
+
+!`cat "/Users/keeee/Desktop/Dev/Qwen3-TTS/voice_presets.json"`
+
+上記の結果をもとに、プリセット名の一覧をユーザーに見せて「どの声で読み上げますか？」と確認する。
+
+### Step 5: 音声を生成する
+
+ユーザーが選んだプリセット名と、Step 3 で生成したナレーション本文を使って音声を生成する。
+`PRESET_NAME` と `NARRATION_TEXT` を実際の値に置き換えてBashで実行:
+
+```
+conda run -n qwen3-tts-mlx python /Users/keeee/Desktop/Dev/Paper/scripts/generate_tts.py \
+  --text "NARRATION_TEXT" \
+  --preset "PRESET_NAME" \
+  --output "/Users/keeee/Desktop/Dev/Paper/作業中動画/narration.wav"
+```
+
+完了したら「narration.wav を生成しました」と伝える。
 
 ### 注意点
 - テロップは15文字以内を目安に短く端的に
