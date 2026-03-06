@@ -1,7 +1,7 @@
 ---
 name: video-script
 description: 作業中動画フォルダの動画を分析してショート動画用のテロップとナレーション原稿を生成する。フック・本題・行動喚起の3部構成。動画スクリプト、テロップ、ナレーション、ショート動画の原稿を作りたいときに使う。
-allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(python3 *), Read, Write
+allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(python3 *), Bash(awk *), Bash(for *), Read, Write
 disable-model-invocation: true
 ---
 
@@ -27,7 +27,15 @@ disable-model-invocation: true
 
 合計尺を計測する:
 
-!`for f in "/Users/keeee/Desktop/Dev/Paper/作業中動画/"*.mp4; do ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null; done | awk '{sum+=$1} END {printf "合計: %.1f秒\n", sum}'`
+!`python3 -c "
+import subprocess, glob
+files = sorted(glob.glob('/Users/keeee/Desktop/Dev/Paper/作業中動画/*.mp4'))
+total = 0
+for f in files:
+    r = subprocess.run(['ffprobe','-v','quiet','-show_entries','format=duration','-of','csv=p=0',f], capture_output=True, text=True)
+    total += float(r.stdout.strip() or 0)
+print(f'合計: {total:.1f}秒')
+"`
 
 合計尺（秒）を記憶する。
 
