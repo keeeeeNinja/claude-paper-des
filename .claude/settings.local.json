@@ -52,7 +52,21 @@
       "Bash(ffprobe:*)",
       "Bash(brew list:*)",
       "Bash(node:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(ln:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:bannnner.com)",
+      "WebFetch(domain:github.com)",
+      "mcp__fal-ai__list_models",
+      "mcp__fal-ai__recommend_model",
+      "mcp__fal-ai__generate_video",
+      "mcp__fal-ai__generate_video_from_image",
+      "mcp__fal-ai__generate_video_from_video",
+      "mcp__fal-ai__generate_image",
+      "mcp__fal-ai__get_status",
+      "mcp__fal-ai__get_result",
+      "Bash(pip3 install:*)"
     ]
   }
 }

@@ -1,108 +1,52 @@
 # Paper 制作プロジェクト
 
 ## WHY
-チラシ・バナー・広告などの**静止画デザイン**と、ショート動画広告の**動画制作**の両方を扱うプロジェクト。
-- 静止画 → Paper MCP 経由で修正・完成させる
-- 動画 → Remotion + VOICEVOX で自動生成する
+チラシ・バナー・広告の**静止画デザイン**と、ショート動画広告の**動画制作**を扱う。
+静止画 → Paper MCP / 動画 → Remotion + VOICEVOX
 
 ## プロジェクト構成
-
 ```
 Paper/
-├── 作業中動画/         # 制作中のクリップ（.mp4）＋テロップとナレーション.md＋narration.wav
+├── 作業中動画/         # 制作中クリップ + テロップとナレーション.md + narration.wav
 ├── public/             # Remotion用アセット（動画・音声）
-├── src/
-│   └── compositions/
-│       └── AdVideo.tsx # Remotionコンポジション（動画＋テロップ＋音声）
-├── skills/
-│   └── video-script/   # スキル本体（~/.claude/skillsへシンボリックリンク）
+├── src/compositions/
+│   └── AdVideo.tsx     # Remotionコンポジション
+├── skills/             # スキル本体（~/.claude/skillsへシンボリックリンク）
 ├── scripts/
-│   └── generate_tts.py # VOICEVOX音声生成スクリプト
-├── TODO.md             # 今後やること
-└── CLAUDE.md           # このファイル
+│   └── generate_tts.py # VOICEVOX音声生成
+└── CLAUDE.md
 ```
 
----
+## コマンド
+- Remotion Studio: `npm run studio` → http://localhost:3000
+- レンダー: `npm run render` → `out/ad-video.mp4`
+- 音声生成: `python3 scripts/generate_tts.py --text "..." --voicevox-id ID --output narration.wav`
+- VOICEVOX: GUIアプリ起動必須（localhost:50021）
 
-## 静止画デザイン（Paper MCP）
-
-- **ツール**: Paper Desktop App + Paper MCP Server
-- **MCP URL**: `http://127.0.0.1:29979/mcp`（Claude Code に登録済み）
-- Paper Desktop が起動していないと MCP が動かない
-- セッションが長くなると接続が切れる → Claude Code を再起動して再接続
-
-### 作業フロー
-1. `get_basic_info` → `get_screenshot` で現状把握
-2. `get_tree_summary` / `get_selection` で対象ノード特定
-3. 修正方針をユーザーと確認してから実行
-4. `set_text_content` / `update_styles` / `write_html` で修正
-5. 2〜3操作ごとに `get_screenshot` でレビュー
-6. 完了後 `finish_working_on_nodes` を呼ぶ
-
-### 判断基準
+## 絶対ルール
+- **テロップは毎回ゼロから設計する。前回の動画のフォント・サイズ・配置・色・装飾を絶対に流用しない**
+- bannnner.com のバナーを「元ネタ」として使い、そのデザイン処理をそのまま適用する
+- 各シーンの参考バナー画像をユーザーに提示し、承認を得てから実装する
 - デザインの良し悪しは `デザインの極意書.md` のチェックリストで判断する
-- スタイル選択に迷ったら `日本人デザイナーの哲学・思考・デザインタイプ一覧.md` を参照する
 - 勝手に大きく変えない。方針は必ずユーザーに確認する
 
----
-
-## 動画制作（Remotion + VOICEVOX）
-
-### スキル: `/video-script`
-`作業中動画/` の動画クリップを分析してショート動画の原稿・音声を生成する。
-
-**フロー:**
-1. 動画ファイルを自動検出・合計尺を計測
-2. ナレーションのペース（ゆっくり/普通/早口）と話者を選ぶ
-3. 動画フレームを抽出・分析
-4. テロップ＋ナレーション原稿を生成 → 確認・修正 → `テロップとナレーション.md` に保存
-5. VOICEVOXで音声生成 → 動画尺と比較 → 長すぎたら自動縮小・短すぎたらユーザー確認
-
-**話者選択（VOICEVOX・5スタイル×男女3名）:** 普通 / しっとり / アナウンス / シリアス / 明るい
-
-### 動画制作の全体フロー（ユーザー視点）
-1. **動画素材を用意**して `作業中動画/` に入れる
-2. **`/video-script`** を叩いてテロップ・ナレーション生成
-3. あとはClaudeが担当：
-   - `public/` に素材をコピー
-   - `AdVideo.tsx` のクリップ名・テロップ・尺を更新
-   - テロップデザイン・トランジションを調整
-   - レンダリング（`npm run render`）→ `out/ad-video.mp4` 完成
-
-### テロップデザイン方針
-- **`ショート動画のプロ一覧.md`** の5人を参照し、動画の雰囲気に合うプロを選ぶ
-- 選んだプロになりきってデザインを決定する
-- **栗林 和明スタイル**（シネマティック・プレミアム系）の実装例：
-  - 背景ボックスなし、白テキスト＋text-shadow
-  - fontWeight: 300、letterSpacing: 0.12em
-  - フェードイン＋スケール（0.95→1.0、20フレーム）
-  - トランジション：白フラッシュ（切り替え点±8フレーム）
-
-### Remotion
-- 起動: `npm run studio` → http://localhost:3000
-- レンダー: `npm run render`
-- コンポジション: 縦型 1080×1920 / 30fps
-- `AdVideo.tsx`: クリップをSequenceで繋ぎ、テロップ＋Audioを重ねる構成
-
-### VOICEVOX
-- GUIアプリ起動が必須（起動するとlocalhost:50021でAPIが立ち上がる）
-- 初回起動時にGatekeeperでブロックされたら:
-  ```bash
-  xattr -d com.apple.quarantine /Applications/VOICEVOX.app
-  ```
-- 音声生成: `python3 scripts/generate_tts.py --text "..." --voicevox-id 10 --output narration.wav`
-
----
+## 動画制作フロー
+1. 動画素材を `作業中動画/` に入れる
+2. `/video-script` → テロップ・ナレーション・音声生成
+3. `/telop-design` → bannnner.comからデザイン導出 → AdVideo.tsx実装
+4. `public/` に素材コピー → `npm run render`
 
 ## 参照ファイル
 | ファイル | 用途 |
 |---------|------|
-| `デザインの極意書.md` | 静止画デザインの判断基準 |
-| `日本人デザイナーの哲学・思考・デザインタイプ一覧.md` | スタイル選択の基準 |
-| `ショート動画のプロ一覧.md` | テロップデザインの参考 |
-| `テキストエフェクトチュートリアル.md` | テロップアニメーションの参考 |
+| `デザインの極意書.md` | デザイン判断基準 |
+| `日本人デザイナーの哲学・思考・デザインタイプ一覧.md` | スタイル選択基準 |
+| `バナー参考サイト.md` | テロップデザインの参考元 |
+
+## Remotion
+- 縦型 1080×1920 / 30fps
+- AdVideo.tsx: クリップをSequenceで繋ぎ、テロップ+Audioを重ねる構成
 
 ## Notes
-- スキルは `skills/video-script/` が実体、`~/.claude/skills/video-script` はシンボリックリンク
-- スキルを変更したらこのリポジトリでコミット・プッシュするだけでOK
-- TODO.md に次回やることを記載済み
+- スキルは `skills/` が実体、`~/.claude/skills/` はシンボリックリンク
+- Paper MCP: `http://127.0.0.1:29979/mcp`（Paper Desktop起動必須）
