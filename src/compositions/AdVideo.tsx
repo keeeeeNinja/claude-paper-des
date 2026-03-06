@@ -1,4 +1,4 @@
-import { AbsoluteFill, Audio, OffthreadVideo, Sequence, staticFile } from "remotion";
+import { AbsoluteFill, Audio, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 
 const CLIP_DURATION_FRAMES = 162; // 5.4秒 × 30fps
 
@@ -8,10 +8,60 @@ const clips = [
   { file: "scene3_シネマティック.mp4", telop: "保存して今夜から試して" },
 ];
 
+const Telop: React.FC<{ text: string }> = ({ text }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
+  const scale = interpolate(frame, [0, 20], [0.95, 1], { extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: "flex-end",
+        alignItems: "center",
+        paddingBottom: 160,
+      }}
+    >
+      <div
+        style={{
+          color: "white",
+          fontSize: 72,
+          fontWeight: 300,
+          letterSpacing: "0.12em",
+          fontFamily: "Hiragino Sans, sans-serif",
+          textShadow: "0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.4)",
+          opacity,
+          transform: `scale(${scale})`,
+          textAlign: "center",
+        }}
+      >
+        {text}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+const FLASH_FRAMES = 8; // フラッシュの片側フレーム数（計16フレーム = 約0.5秒）
+
+const WhiteFlash: React.FC = () => {
+  const frame = useCurrentFrame();
+  const transitions = [1, 2].map((i) => i * CLIP_DURATION_FRAMES);
+
+  const opacity = transitions.reduce((acc, t) => {
+    const dist = Math.abs(frame - t);
+    if (dist > FLASH_FRAMES) return acc;
+    return Math.max(acc, interpolate(dist, [0, FLASH_FRAMES], [1, 0], { extrapolateRight: "clamp" }));
+  }, 0);
+
+  if (opacity === 0) return null;
+  return (
+    <AbsoluteFill style={{ backgroundColor: `rgba(255,255,255,${opacity})`, zIndex: 10 }} />
+  );
+};
+
 export const AdVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
-      <Audio src={staticFile("narration.wav")} />
+      <Audio src={staticFile("narration.wav")} volume={0.5} />
       {clips.map(({ file, telop }, i) => (
         <Sequence
           key={file}
@@ -20,31 +70,11 @@ export const AdVideo: React.FC = () => {
         >
           <AbsoluteFill>
             <OffthreadVideo src={staticFile(file)} />
-            <AbsoluteFill
-              style={{
-                justifyContent: "flex-end",
-                alignItems: "center",
-                paddingBottom: 120,
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.55)",
-                  color: "white",
-                  fontSize: 64,
-                  fontWeight: "bold",
-                  padding: "18px 48px",
-                  borderRadius: 12,
-                  letterSpacing: "0.05em",
-                  fontFamily: "Hiragino Sans, sans-serif",
-                }}
-              >
-                {telop}
-              </div>
-            </AbsoluteFill>
+            <Telop text={telop} />
           </AbsoluteFill>
         </Sequence>
       ))}
+      <WhiteFlash />
     </AbsoluteFill>
   );
 };
