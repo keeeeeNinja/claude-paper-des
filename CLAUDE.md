@@ -22,6 +22,7 @@ Paper/
 - レンダー: `npm run render` → `out/ad-video.mp4`
 - 音声生成: `python3 scripts/generate_tts.py --text "..." --voicevox-id ID --output narration.wav`
 - VOICEVOX: GUIアプリ起動必須（localhost:50021）
+- 動画確認: `ffmpeg -i <file>` でメタデータ確認、フレーム抽出は `ffmpeg -i <file> -vf "select=eq(n\,0)" -vsync vr frame.png`
 
 ## 絶対ルール
 - **テロップは毎回ゼロから設計する。前回の動画のフォント・サイズ・配置・色・装飾を絶対に流用しない**
@@ -32,9 +33,24 @@ Paper/
 
 ## 動画制作フロー
 1. 動画素材を `作業中動画/` に入れる
-2. `/video-script` → テロップ・ナレーション・音声生成
-3. `/telop-design` → bannnner.comからデザイン導出 → AdVideo.tsx実装
-4. `public/` に素材コピー → `npm run render`
+2. `/kling-video` → Kling（fal.ai経由）で動画クリップ生成
+3. `/video-script` → テロップ・ナレーション・音声生成
+4. `/telop-design` → bannnner.comパターン辞書からデザイン導出 → AdVideo.tsx実装
+5. `public/` に素材コピー → `npm run render`
+
+## スキル一覧
+| スキル | 用途 |
+|-------|------|
+| `/kling-video` | Kling v2.1/v3でクリップ生成。プロンプト作成後に一旦停止してユーザー確認 |
+| `/video-script` | テロップ文言・ナレーション・音声生成（VOICEVOX） |
+| `/telop-design` | bannnner.comパターン辞書を使ったテロップデザイン設計・AdVideo.tsx実装 |
+
+## telop-designスキルの設計
+- パターン辞書: `skills/telop-design/patterns.md`（10パターン、CSS実装例付き）
+- マッチングルール: `skills/telop-design/matching-rules.md`（映像→パターン判定フロー）
+- フォント・色・装飾: `skills/telop-design/fonts-colors-decorations.md`
+- 代表バナー画像: `skills/telop-design/banners/`（P1〜P10各1枚、比較用に永続保存）
+- AdVideo.tsxはvariantなしのインラインスタイル構成（clips配列 + render関数で全パターン対応）
 
 ## 参照ファイル
 | ファイル | 用途 |
@@ -45,7 +61,12 @@ Paper/
 
 ## Remotion
 - 縦型 1080×1920 / 30fps
-- AdVideo.tsx: クリップをSequenceで繋ぎ、テロップ+Audioを重ねる構成
+- AdVideo.tsx: clips配列でSequenceを繋ぐ。P1-P5/P9/P10はcontainerStyle+textStyle、P6/P7/P8はrender関数でカスタム描画
+
+## Klingモデル選択
+- 練習・確認用: `fal-ai/kling-video/v2.1/standard/image-to-video`（$0.28/clip）
+- 本番: `fal-ai/kling-video/v3/pro/image-to-video`（$1.40/clip）
+- motion-control: v2.6以降で使用可能だがタイムアウトしやすい。全身が映る参照動画が必要
 
 ## Notes
 - スキルは `skills/` が実体、`~/.claude/skills/` はシンボリックリンク

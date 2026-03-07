@@ -1,168 +1,410 @@
 ---
 name: telop-design
 description: 作業中動画のクリップを分析し、bannnner.comのバナーデザインパターンを参考にして最適なテロップデザインをAdVideo.tsxに実装する。テロップのデザインや配置を変えたい、バナーを参考にしたい、動画のテキストスタイルを改善したい、という場面で必ず使う。毎回「ショート動画のプロ一覧」に頼るのではなく、実際のバナー画像から帰納的にデザインを導くことが目的。
-allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(curl *), Bash(mkdir *), Bash(python3 *), Read, Write, Edit, WebFetch
+allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(curl *), Bash(mkdir *), Bash(python3 *), Bash(npx *), Read, Write, WebFetch
 ---
 
 ## テロップデザイン設計・実装
 
-各クリップの映像内容とbannnner.comのバナーデザインパターンを照合し、その動画に固有のテロップデザインをAdVideo.tsxに実装する。
+各クリップの映像内容をパターン辞書と照合し、その動画に固有のテロップデザインをAdVideo.tsxに実装する。
 
 ### 絶対ルール（最重要）
 
-1. **前回の動画のスタイルを絶対に流用しない。** AdVideo.tsxの既存コードのフォント・サイズ・配置・色・装飾を引き継がない。毎回ゼロから設計する。
-2. **bannnner.comのバナーを「参考」ではなく「元ネタ」として使う。** バナーのテキスト配置・フォントの太さ・サイズ比率・装飾・色使いをそのまま動画テロップに適用する。
-3. **各シーンの参考バナー画像をユーザーに見せて承認を得てから実装する。** 「このバナーのこのテキスト処理を使います」と具体的に伝える。
-4. **動画ごとにデザインは完全に変わる。** 同じ動画の3シーン間は統一感を持たせるが、別の動画とは別のデザインにする。
+1. **AdVideo.tsxの既存コードを読まない。** 前回のスタイルが目に入ること自体が引きずりの原因。実装時は既存コードを参照せず、テンプレートから書き直す。
+2. **パターン辞書から選ぶ。** bannnner.comを毎回収集しない。まず patterns.md の10パターンを参照し、マッチするパターンを選ぶ。辞書に合うものがなければ新規収集する。
+3. **各シーンに異なるパターンを使う。** 3シーンで同じパターン・同じフォントwightを使わない。
+4. **自分でパターンを選んでユーザーに提案する。** ユーザーに選ばせない。私が映像を分析してベストなパターンを判断し、理由を添えて提案する。
+5. **フォントサイズは64px未満にしない。** 動画は5秒で消える。小さいと読めない。
 
 ---
 
-### Step 1: デザイン原則のインプット
+### Step 1: パターン辞書と原則を読み込む
 
-`/Users/keeee/Desktop/Dev/Paper/デザインの極意書.md` を Read で読み込む。
+以下を必ず読む：
 
-以下を判断基準として記憶する：
-- **視線誘導**：Z型（左上→右上→左下→右下）またはF型
-- **3階層ルール**：強（タイトル）・中（サブコピー）・弱（補足）
-- **余白 = 高級感**：詰め込まない、空白もデザイン
-- **主役は1つ**：テロップが主役になる瞬間を作る
-- **3秒で理解できるか**：最終チェック基準
+```
+Read: /Users/keeee/.claude/skills/telop-design/patterns.md
+Read: /Users/keeee/.claude/skills/telop-design/matching-rules.md
+Read: /Users/keeee/.claude/skills/telop-design/fonts-colors-decorations.md
+Read: /Users/keeee/Desktop/Dev/Paper/デザインの極意書.md
+```
+
+これで10パターンのCSS実装例・使いどころ・映像→パターンの判定ルールが頭に入る。
 
 ---
 
 ### Step 2: 動画クリップの分析
 
-#### 2-1. ファイル確認
+#### 2-1. ファイルと尺を確認する
 
 ```bash
 ls /Users/keeee/Desktop/Dev/Paper/作業中動画/*.mp4
 ```
 
-#### 2-2. フレーム抽出（クリップごとに実行）
+使用するクリップ（scene1〜など）とそのdurationInFrames（fps30換算）を確認する。
+performing_a_facial.mp4 など参照動画素材は除外する。
+
+#### 2-2. フレーム抽出（クリップごと）
 
 ```bash
 mkdir -p /tmp/telop-design-frames
-ffmpeg -i "VIDEO_PATH" -vf "fps=1/5,scale=640:-1" /tmp/telop-design-frames/CLIP_NAME-frame-%03d.jpg -y 2>/dev/null
+ffmpeg -i "VIDEO_PATH" -vf "fps=1/5,scale=640:-1" /tmp/telop-design-frames/CLIP_NAME-%03d.jpg -y 2>/dev/null
 ```
 
-#### 2-3. フレームを読み込んで各クリップを分析
+#### 2-3. 各クリップの映像特徴を分析する
 
-各クリップについて以下を把握する：
-
-| 分析項目 | 内容 |
-|---------|------|
-| **映像トーン** | 高級感/カジュアル/シネマティック/温かみ など |
-| **色調・明暗** | 暗め/明るめ/コントラスト強/淡い など |
-| **被写体・構図** | 商品アップ/人物/風景/抽象 など |
-| **空きスペース** | テロップを置ける余地（上部/下部/左右/四隅） |
-| **動きの方向** | カメラの動き、被写体の動き |
+| 分析項目 | 見るべきこと |
+|---------|------------|
+| **明暗** | 暗い/明るい/コントラスト強/淡い |
+| **被写体位置** | 中央/上部/下部/左右 |
+| **空きスペース** | テロップを置ける余地はどこか |
+| **雰囲気** | 高級/カジュアル/シネマ/清潔/和風 など |
+| **シーン役割** | フック/本題/行動喚起 |
 
 ---
 
-### Step 3: bannnner.comからバナーを収集・分析
+### Step 3: パターンを選択する
 
-#### 3-1. サイト構造を把握する
+Step 1で読んだ `matching-rules.md` の判定フローに従い、各クリップのパターンを決定する。
 
+**判定フロー（4段階）:**
+1. 明暗 → テキスト色を決める
+2. 被写体位置 → テロップの配置エリアを決める
+3. 空きスペース → 配置を確定する
+4. 雰囲気 × シーン役割 → パターンを決定する
+
+**3シーンの組み合わせ制約:**
+- 同じパターンを2回使わない
+- フック（1枚目）は P1, P3, P6 のいずれか（インパクト重視）
+- フォントwightを3シーンで変化させる（例: 800 → 300 → 600）
+- matching-rules.md の「組み合わせ例」を参考にする
+
+**パターンが辞書に合わない場合のみ** bannnner.comで新しいバナーを収集する:
 ```
-WebFetch: https://bannnner.com/
+WebFetch: https://bannnner.com/tag/[ジャンル]/
+→ 画像URLを抽出 → curl でダウンロード → Read で分析
 ```
-
-HTMLからカテゴリ一覧・タグ・URLパターンを確認する。
-ページネーション構造やカテゴリURLの形式を特定する（例：`/?cat=XX`、`/tag/XX/` など）。
-
-#### 3-2. 動画に合うカテゴリを選ぶ
-
-Step 2の分析結果をもとに、以下の観点でカテゴリを絞り込む：
-
-- **業界**：食品・飲料、コスメ・美容、高級品、ファッションなど
-- **デザインタイプ**：テキスト重視、縦割り、余白多め、など
-- **雰囲気の一致度**：映像トーンと合うか
-
-複数カテゴリを組み合わせてよい。**動画の雰囲気に近いバナーが多いカテゴリを優先する。**
-
-#### 3-3. バナー画像を収集する（20〜30枚）
-
-カテゴリページのHTMLを WebFetch で取得し、画像URLを抽出する。
-画像URLのパターン例：`https://bannnner.com/wp-content/uploads/YYYY/MM/banner_XXXX.jpg`
-
-```bash
-mkdir -p /tmp/telop-design-banners
-curl -o /tmp/telop-design-banners/banner_XXXX.jpg "IMAGE_URL"
-```
-
-20〜30枚取得したら分析に入る（それ以上は不要）。
-
-#### 3-4. バナーを読み込んでベストマッチを選ぶ
-
-各画像を Read で読み込み、以下の**レイアウトパターン**を抽出する：
-
-| 分析軸 | 見るべきこと |
-|-------|------------|
-| **テキスト配置** | 左上/中央/右下/対角/端寄せ など |
-| **フォントの対比** | 太い見出し×細いサブ、大×小のサイズ差 |
-| **テキストの色** | 白/黒/アクセントカラー/グラデーション |
-| **余白の使い方** | 周囲の余白、テキスト周りの空気感 |
-| **装飾要素** | 線、ボックス、背景帯、影、なし（素テキスト） |
-| **縦書き・横書き** | 縦書きの使われ方、日本語特有の表現 |
-
-**ここが最重要：**
-- 20〜30枚の中から**各シーンにベストマッチするバナーを1枚ずつ選ぶ**
-- 選ぶ基準は「映像の色味・構図・空きスペースが近い」「テキストの処理がこの動画に合う」
-- 選んだバナーのテキスト処理を**そのまま**テロップに適用する（配置・フォントの太さ/種類・サイズ比率・装飾・色）
-- 動画の雰囲気と合わないバナーは無視する
 
 ---
 
-### Step 4: テロップデザインの提案（バナー画像付き）
+### Step 4: テロップデザイン提案
 
-クリップごとに以下を提案する。**必ず参考バナーの画像をユーザーに見せる。**
+各シーンについて以下を提案する。ユーザーに選ばせず、**自分が判断して提案する**。
 
 ```
-【scene1_XXX】
-参考バナー：banner_XXXX.jpg（ユーザーに画像を表示）
-- このバナーの「○○」というテキスト処理を使う
-- 配置：（バナーから読み取った配置）
-- フォント：（バナーから読み取ったフォントの太さ・種類）
-- サイズ：（バナー内のテキストと商品のサイズ比率を参考に）
-- 色：（バナーから読み取った色使い）
-- 装飾：（バナーから読み取った装飾要素）
-- アニメーション：（動画の動きに合わせて決定）
+【scene1_XXX — フック】
+適用パターン: P3 上部大文字ヘッドライン
+理由: [映像特徴から判断した理由を1行で]
+- 配置: 上部左寄せ
+- フォント: 超太ゴシック (weight 900)
+- サイズ: 96px
+- 色: #FFFFFF
+- 装飾: テキストシャドウ
+- アニメーション: フェードイン 25フレーム
 
-【scene2_XXX】
-参考バナー：banner_YYYY.jpg（ユーザーに画像を表示）
+【scene2_XXX — 本題】
+適用パターン: P4 縦書き端配置
+...
+
+【scene3_XXX — 行動喚起】
+適用パターン: P5 左上ミニマル
 ...
 ```
 
-ユーザーに確認を取る：
-> 「この方向性でよければ実装します。変えたい部分があれば教えてください。」
-
-**ユーザーが別のバナーを指定した場合、そのバナーのデザインに従う。**
+ユーザーに確認：「この方向性でよければ実装します。」
 
 ---
 
-### Step 5: AdVideo.tsxに実装
+### Step 5: AdVideo.tsxを実装する
 
-承認後、`/Users/keeee/Desktop/Dev/Paper/src/compositions/AdVideo.tsx` を Read で読み込み、
-**既存コードを全面的に書き換える**（前回のスタイルを残さない）。
+**AdVideo.tsxは読まずに書き直す。** 前回のコードは参照しない。
+
+以下のテンプレートに、Step 4で決めたスタイルを**インラインで**書き込む。
+
+#### テンプレート構造（必ずこの構造で書く）
+
+```tsx
+import { AbsoluteFill, Audio, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+
+// ===== クリップ定義 =====
+// 各クリップのスタイルはここに直接書く。variantは使わない。
+const clips = [
+  {
+    file: "CLIP_FILE_1.mp4",
+    telop: "テロップ1",
+    durationInFrames: 150,
+    // P3: 上部大文字ヘッドライン型
+    containerStyle: {
+      justifyContent: "flex-start" as const,
+      alignItems: "flex-start" as const,
+      paddingTop: 160,
+      paddingLeft: 48,
+    },
+    textStyle: {
+      fontSize: 96,
+      fontWeight: 900,
+      fontFamily: "Hiragino Sans, sans-serif",
+      letterSpacing: "0.02em",
+      lineHeight: 1.25,
+      color: "#FFFFFF",
+      textShadow: "0 3px 24px rgba(0,0,0,0.5)",
+      whiteSpace: "pre-line" as const,
+    },
+    animation: (frame: number) => ({
+      opacity: interpolate(frame, [0, 25], [0, 1], { extrapolateRight: "clamp" }),
+    }),
+  },
+  {
+    file: "CLIP_FILE_2.mp4",
+    telop: "テロップ2",
+    durationInFrames: 150,
+    // P4: 縦書き端配置型
+    containerStyle: {
+      justifyContent: "center" as const,
+      alignItems: "flex-end" as const,
+      paddingRight: 64,
+    },
+    textStyle: {
+      writingMode: "vertical-rl" as const,
+      fontSize: 72,
+      fontWeight: 300,
+      fontFamily: "Hiragino Mincho ProN, YuMincho, serif",
+      letterSpacing: "0.3em",
+      lineHeight: 1,
+      color: "#F5E6C8",
+      textShadow: "0 1px 16px rgba(0,0,0,0.4)",
+    },
+    animation: (frame: number) => ({
+      opacity: interpolate(frame, [0, 30], [0, 1], { extrapolateRight: "clamp" }),
+    }),
+  },
+  {
+    file: "CLIP_FILE_3.mp4",
+    telop: "テロップ3",
+    durationInFrames: 150,
+    // P5: 左上ミニマル型
+    containerStyle: {
+      justifyContent: "flex-start" as const,
+      alignItems: "flex-start" as const,
+      paddingTop: 180,
+      paddingLeft: 56,
+    },
+    textStyle: {
+      fontSize: 48,
+      fontWeight: 300,
+      fontFamily: "Hiragino Sans, sans-serif",
+      letterSpacing: "0.1em",
+      lineHeight: 1.6,
+      color: "#2A2A2A",
+    },
+    animation: (frame: number) => ({
+      opacity: interpolate(frame, [0, 30], [0, 1], { extrapolateRight: "clamp" }),
+    }),
+  },
+];
+
+// ===== Telopコンポーネント =====
+// P1-P5, P9, P10: containerStyle + textStyle で描画
+// P6, P7, P8: render関数でカスタム描画
+const Telop: React.FC<(typeof clips)[number]> = (clip) => {
+  const frame = useCurrentFrame();
+  if (clip.render) return clip.render(frame);
+  const { telop, containerStyle, textStyle, animation } = clip;
+  return (
+    <AbsoluteFill style={containerStyle}>
+      <div style={{ ...textStyle, ...animation!(frame) }}>{telop}</div>
+    </AbsoluteFill>
+  );
+};
+
+// ===== トランジション（白フラッシュ）=====
+const FLASH_FRAMES = 8;
+const WhiteFlash: React.FC = () => {
+  const frame = useCurrentFrame();
+  // クリップ間の境界フレームを動的に計算
+  const transitions: number[] = [];
+  let acc = 0;
+  for (let i = 0; i < clips.length - 1; i++) {
+    acc += clips[i].durationInFrames;
+    transitions.push(acc);
+  }
+  const opacity = transitions.reduce((o, t) => {
+    const dist = Math.abs(frame - t);
+    if (dist > FLASH_FRAMES) return o;
+    return Math.max(o, interpolate(dist, [0, FLASH_FRAMES], [0.8, 0], { extrapolateRight: "clamp" }));
+  }, 0);
+  if (opacity === 0) return null;
+  return <AbsoluteFill style={{ backgroundColor: `rgba(255,255,255,${opacity})`, zIndex: 10 }} />;
+};
+
+// ===== メインコンポーネント =====
+export const AdVideo: React.FC = () => {
+  let from = 0;
+  return (
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      <Audio src={staticFile("narration.wav")} volume={0.5} />
+      {clips.map((clip) => {
+        const start = from;
+        from += clip.durationInFrames;
+        return (
+          <Sequence key={clip.file} from={start} durationInFrames={clip.durationInFrames}>
+            <AbsoluteFill>
+              <OffthreadVideo
+                src={staticFile(clip.file)}
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center center" }}
+              />
+              <Telop {...clip} />
+            </AbsoluteFill>
+          </Sequence>
+        );
+      })}
+      <WhiteFlash />
+    </AbsoluteFill>
+  );
+};
+```
+
+このテンプレートの `clips` 配列の各要素に Step 4 で決めたスタイルを書き込む。
+
+#### P6・P7・P8を使う場合
+
+P6・P7・P8は複数要素や帯構造が必要。clips配列には残したまま、`render` 関数でカスタム描画する。`containerStyle` / `textStyle` / `animation` の代わりに `render` を指定する。
+
+**P6（中央インパクト数字）— メイン＋サブの2要素:**
+```tsx
+{
+  file: "CLIP_FILE.mp4",
+  durationInFrames: 150,
+  render: (frame: number) => (
+    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+      <div style={{ textAlign: "center", opacity: interpolate(frame, [0, 15], [0, 1], { extrapolateRight: "clamp" }) }}>
+        <div style={{ fontSize: 140, fontWeight: 900, color: "#E53935" }}>50%OFF</div>
+        <div style={{ fontSize: 36, fontWeight: 400, color: "#FFFFFF", marginTop: 8 }}>期間限定</div>
+      </div>
+    </AbsoluteFill>
+  ),
+},
+```
+
+**P7（英字+日本語二層）— 対角線に2要素:**
+```tsx
+{
+  file: "CLIP_FILE.mp4",
+  durationInFrames: 150,
+  render: (frame: number) => {
+    const opacity = interpolate(frame, [0, 25], [0, 1], { extrapolateRight: "clamp" });
+    return (
+      <AbsoluteFill style={{ justifyContent: "space-between", padding: "160px 48px", opacity }}>
+        <div style={{ alignSelf: "flex-end", fontSize: 56, fontFamily: "Georgia, serif", letterSpacing: "0.2em", color: "#1A1A1A", textTransform: "uppercase" as const }}>
+          BEAUTY
+        </div>
+        <div style={{ alignSelf: "flex-start", fontSize: 32, fontFamily: "Hiragino Sans, sans-serif", color: "#555555" }}>
+          美しさの新基準
+        </div>
+      </AbsoluteFill>
+    );
+  },
+},
+```
+
+**P8（下部帯テキスト）— 帯divを挟む:**
+```tsx
+{
+  file: "CLIP_FILE.mp4",
+  durationInFrames: 150,
+  render: (frame: number) => (
+    <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "stretch",
+      opacity: interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" }),
+      transform: `translateY(${interpolate(frame, [0, 20], [40, 0], { extrapolateRight: "clamp" })}px)`,
+    }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.45)", padding: "20px 48px", textAlign: "center" as const }}>
+        <div style={{ fontSize: 52, fontWeight: 500, color: "#FFFFFF", letterSpacing: "0.06em" }}>
+          テロップテキスト
+        </div>
+      </div>
+    </AbsoluteFill>
+  ),
+},
+```
 
 #### 実装時の注意点
 
-- **Remotionの制約**：`AbsoluteFill` は `display: flex, flexDirection: column` がデフォルト
-  - 右端配置 → `alignItems: "flex-end"`、上下中央 → `justifyContent: "center"`
-  - 左上配置 → `alignItems: "flex-start"`、`justifyContent: "flex-start"`
-- **縦書き**：`writingMode: "vertical-rl"` を使う
-- **アニメーション**：`interpolate` + `useCurrentFrame` で実装
-- **フォント**：`Hiragino Mincho ProN, YuMincho, serif`（明朝）または `Hiragino Sans, sans-serif`（ゴシック）
-- **バナーから読み取ったデザインを忠実に再現する**：
-  - バナーのテキストが太ゴシックなら太ゴシックにする
-  - バナーのテキストが左上配置なら左上にする
-  - バナーにテキスト背景帯があるなら背景帯をつける
-  - 「なんとなく似た雰囲気」ではなく「同じデザイン処理」を適用する
+- **Remotionの制約**: `AbsoluteFill` は `display: flex, flexDirection: column` がデフォルト
+  - 下部配置 → `justifyContent: "flex-end"`
+  - 右端 → `alignItems: "flex-end"`
+  - 中央 → `justifyContent: "center", alignItems: "center"`
+- **縦書き**: `writingMode: "vertical-rl"`
+- **patterns.mdのCSS実装例を使う**（コピペして値を調整）
 
-#### デザインの極意書チェックリスト（実装前確認）
+---
+
+### Step 6: デザインチェックリスト（実装後）
+
 - [ ] 3秒で内容が理解できるか
-- [ ] 主役が1つになっているか（テロップが映像と競合していないか）
-- [ ] 視線の流れがあるか
-- [ ] 情報が多すぎないか（テロップは15文字以内）
+- [ ] 主役が1つになっているか
+- [ ] 3シーンでフォントweight・配置・サイズに変化があるか
+- [ ] 前回の動画と異なるデザインになっているか
 
-実装後、ユーザーにRemotion Studioでの確認を促す。
+チェック完了後、Step 7へ進む。
+
+---
+
+### Step 7: デザイン批評（バナーとの比較）
+
+実装が終わったらRemotion CLIで静止フレームを書き出し、参考バナーと並べて比較する。
+
+#### 7-1. 各シーンのフレームを書き出す
+
+各クリップの開始フレームを AdVideo.tsx の clips 配列から計算して使う。
+各クリップの中間フレーム（開始 + durationInFrames/2）を書き出すと映像とテロップが両方見える。
+
+```bash
+# python3でclips配列からフレーム番号を計算する例
+python3 -c "
+clips = [150, 150, 150]  # 実際のdurationInFramesに書き換える
+start = 0
+for i, d in enumerate(clips):
+    mid = start + d // 2
+    print(f'scene{i+1}: --frame={mid}')
+    start += d
+"
+```
+
+計算結果のフレーム番号を使って書き出す:
+```bash
+cd /Users/keeee/Desktop/Dev/Paper
+npx remotion still src/index.ts AdVideo /tmp/telop-still-scene1.png --frame=[scene1のmidフレーム]
+npx remotion still src/index.ts AdVideo /tmp/telop-still-scene2.png --frame=[scene2のmidフレーム]
+npx remotion still src/index.ts AdVideo /tmp/telop-still-scene3.png --frame=[scene3のmidフレーム]
+```
+
+#### 7-2. フレームと参考バナーを読み込んで比較する
+
+各シーンのフレーム（/tmp/telop-still-sceneX.png）と Step 4 で選んだパターンの代表バナーを Read で読み込む。
+代表バナーは `/Users/keeee/.claude/skills/telop-design/banners/` に保存されている。
+例: P1なら `P1_下部左寄せ太ゴシック_TOANN.jpg`
+
+以下を確認する：
+
+| 確認項目 | 判定基準 |
+|---------|---------|
+| **配置の一致** | バナーと同じエリアにテキストが置かれているか |
+| **フォントwightの一致** | 太さが再現できているか（太ゴシックなら太ゴシックか） |
+| **サイズ感の一致** | 映像に対するテキストのサイズ比率が近いか |
+| **色の一致** | 白/暗色/アクセントが意図通りか |
+| **余白の一致** | テキスト周りの空気感が再現できているか |
+| **可読性** | 5秒で読めるか。文字が映像に埋もれていないか |
+
+#### 7-3. ズレがあれば修正してから完了とする
+
+比較の結果ズレがあった場合は、AdVideo.tsxのスタイル値を調整して再度 7-1 を実行する。
+「なんとなく似ている」ではなく「同じデザイン処理が再現できている」状態になってから完了とする。
+
+修正が完了したらユーザーに報告する：
+```
+✅ テロップデザイン実装完了
+- Scene 1: [パターン名] — [1行コメント]
+- Scene 2: [パターン名] — [1行コメント]
+- Scene 3: [パターン名] — [1行コメント]
+Remotion Studio (http://localhost:3000) で動きを確認してください。
+```
