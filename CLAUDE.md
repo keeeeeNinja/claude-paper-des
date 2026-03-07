@@ -33,15 +33,24 @@ Paper/
 
 ## 動画制作フロー
 1. 動画素材を `作業中動画/` に入れる
-2. `/kling-video` → Kling（fal.ai経由）で動画クリップ生成
+2. クリップ生成: `/kling-video`（Kling）または `/runway-video`（Runway）または `/pixverse-prompt`（PixVerse）
 3. `/video-script` → テロップ・ナレーション・音声生成
 4. `/telop-design` → bannnner.comパターン辞書からデザイン導出 → AdVideo.tsx実装
 5. `public/` に素材コピー → `npm run render`
+
+## クリップ生成エンジンの使い分け
+| エンジン | 強み | スキル |
+|---------|------|-------|
+| **Kling** | 参照画像に忠実・人物動作が安定 | `/kling-video` |
+| **Runway** | シネマティック・光と大気感の表現 | `/runway-video` |
+| **PixVerse** | 複数素材の合成（Fusion） | `/pixverse-prompt` |
 
 ## スキル一覧
 | スキル | 用途 |
 |-------|------|
 | `/kling-video` | Kling v2.1/v3でクリップ生成。プロンプト作成後に一旦停止してユーザー確認 |
+| `/runway-video` | Runway gen4_turbo/gen4.5でクリップ生成。シネマティック映像向け |
+| `/pixverse-prompt` | PixVerse Image-to-Video / Fusion Videoのプロンプト生成 |
 | `/video-script` | テロップ文言・ナレーション・音声生成（VOICEVOX） |
 | `/telop-design` | bannnner.comパターン辞書を使ったテロップデザイン設計・AdVideo.tsx実装 |
 
@@ -67,6 +76,11 @@ Paper/
 - 練習・確認用: `fal-ai/kling-video/v2.1/standard/image-to-video`（$0.28/clip）
 - 本番: `fal-ai/kling-video/v3/pro/image-to-video`（$1.40/clip）
 - motion-control: v2.6以降で使用可能だがタイムアウトしやすい。全身が映る参照動画が必要
+
+## Runwayモデル選択
+- 練習・確認用: `gen4_turbo`（image-to-video、$0.25/5秒）
+- 本番: `gen4.5`（image-to-video or text-to-video、$0.60/5秒）
+- MCP: `~/.runway-mcp/build/index.js`（ローカルビルド）、APIキーは `~/.claude.json` に設定済み
 
 ## Notes
 - スキルは `skills/` が実体、`~/.claude/skills/` はシンボリックリンク

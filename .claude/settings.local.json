@@ -66,7 +66,19 @@
       "mcp__fal-ai__generate_image",
       "mcp__fal-ai__get_status",
       "mcp__fal-ai__get_result",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "WebFetch(domain:app.klingai.com)",
+      "mcp__fal-ai__get_usage",
+      "mcp__fal-ai__get_pricing",
+      "mcp__fal-ai__upload_file",
+      "Bash(echo:*)",
+      "Bash(ffmpeg:*)",
+      "Skill(kling-video)",
+      "Skill(telop-design)",
+      "Bash(npx remotion:*)",
+      "WebFetch(domain:docs.dev.runwayml.com)",
+      "WebFetch(domain:help.runwayml.com)",
+      "WebFetch(domain:filmart.ai)"
     ]
   }
 }

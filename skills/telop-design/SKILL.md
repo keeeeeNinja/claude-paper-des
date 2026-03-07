@@ -15,6 +15,84 @@ allowed-tools: Bash(ffmpeg *), Bash(ffprobe *), Bash(ls *), Bash(curl *), Bash(m
 3. **各シーンに異なるパターンを使う。** 3シーンで同じパターン・同じフォントwightを使わない。
 4. **自分でパターンを選んでユーザーに提案する。** ユーザーに選ばせない。私が映像を分析してベストなパターンを判断し、理由を添えて提案する。
 5. **フォントサイズは64px未満にしない。** 動画は5秒で消える。小さいと読めない。
+6. **アニメーションは以下の3種をデフォルトとして使う。** シーンの役割に応じて割り当てる（後述）。
+
+---
+
+### デフォルトアニメーション標準（必ず使う）
+
+3種のアニメーションを状況に応じて使い分ける。毎回これをベースラインとして実装すること。
+
+#### A. 文字が順番にフェードイン（フック系 / P1・P3・P6向け）
+各文字が3フレームずつずれて、下から16pxせり上がりながらopacity 0→1でフェードイン。render関数内で使う。
+```tsx
+// render: (frame: number) => ... の中で
+const DELAY_FRAMES = 3;  // 100ms @ 30fps
+const FADE_FRAMES  = 20;
+
+{"テロップ文言".split("").map((char, i) => {
+  const t = Math.min(1, Math.max(0, (frame - i * DELAY_FRAMES) / FADE_FRAMES));
+  return (
+    <span key={i} style={{
+      display: "inline-block",
+      marginRight: 5,
+      opacity: t,
+      transform: `translateY(${(1 - t) * 16}px)`,
+    }}>{char}</span>
+  );
+})}
+```
+
+#### B. 文字が下から上にずれて出現（帯テキスト系 / P8向け）
+各文字が5フレームずつずれて、下から30pxせり上がりながらフェードイン。render関数内で使う。
+```tsx
+// render: (frame: number) => ... の中で
+{"テロップ文言".split("").map((char, i) => {
+  const CHAR_DELAY = 5;
+  const FADE_FRAMES = 20;
+  const age = Math.max(0, frame - i * CHAR_DELAY);
+  const t = Math.min(1, age / FADE_FRAMES);
+  return (
+    <span key={i} style={{
+      opacity: t,
+      transform: `translateY(${(1 - t) * 30}px)`,
+      display: "inline-block",
+    }}>{char}</span>
+  );
+})}
+```
+
+#### C. 文字がもわっとフェードイン（行動喚起系 / P2・P5向け）
+各文字がタイプライター式に順番に現れ、blurが溶けながら40フレームかけてフェードイン。render関数内で使う。
+```tsx
+// render: (frame: number) => ... の中で
+// startFrame: テキストを表示し始めるフレーム番号
+const text = "テロップ文言";
+const startFrame = 20;
+const CHARS_DURATION = 30; // 全文字出るまでのフレーム数
+const FADE_FRAMES = 40;    // 1文字のフェード時間
+const charsPerFrame = text.length / CHARS_DURATION;
+
+{text.split("").map((char, i) => {
+  const charAppearFrame = startFrame + Math.floor(i / charsPerFrame);
+  const age = frame - charAppearFrame;
+  if (age < 0) return null;
+  const t = Math.min(1, age / FADE_FRAMES);
+  return (
+    <span key={i} style={{
+      opacity: t,
+      filter: `blur(${(1 - t) * 24}px)`,
+    }}>{char}</span>
+  );
+})}
+```
+
+**シーン役割とアニメーションの対応:**
+| シーン役割 | 推奨アニメーション |
+|-----------|----------------|
+| フック（1枚目） | A: ゆっくりフェードイン |
+| 本題（2枚目） | B: 文字が下から上に |
+| 行動喚起（3枚目） | C: 文字がもわっと |
 
 ---
 
@@ -100,7 +178,7 @@ WebFetch: https://bannnner.com/tag/[ジャンル]/
 - サイズ: 96px
 - 色: #FFFFFF
 - 装飾: テキストシャドウ
-- アニメーション: フェードイン 25フレーム
+- アニメーション: A（ゆっくりフェードイン 90フレーム）
 
 【scene2_XXX — 本題】
 適用パターン: P4 縦書き端配置
@@ -307,7 +385,7 @@ P6・P7・P8は複数要素や帯構造が必要。clips配列には残したま
 },
 ```
 
-**P8（下部帯テキスト）— 帯divを挟む:**
+**P8（下部帯テキスト）— 帯divを挟む + 文字が下から上に出現（デフォルトアニメーションB）:**
 ```tsx
 {
   file: "CLIP_FILE.mp4",
@@ -317,9 +395,15 @@ P6・P7・P8は複数要素や帯構造が必要。clips配列には残したま
       opacity: interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" }),
       transform: `translateY(${interpolate(frame, [0, 20], [40, 0], { extrapolateRight: "clamp" })}px)`,
     }}>
-      <div style={{ backgroundColor: "rgba(0,0,0,0.45)", padding: "20px 48px", textAlign: "center" as const }}>
-        <div style={{ fontSize: 52, fontWeight: 500, color: "#FFFFFF", letterSpacing: "0.06em" }}>
-          テロップテキスト
+      <div style={{ backgroundColor: "rgba(0,0,0,0.45)", paddingTop: 20, paddingBottom: 28, paddingLeft: 48, paddingRight: 48, textAlign: "center" as const }}>
+        <div style={{ fontSize: 52, fontWeight: 500, color: "#FFFFFF", letterSpacing: "0.18em", display: "flex", justifyContent: "center", overflow: "hidden" }}>
+          {"テロップテキスト".split("").map((char, i) => {
+            const age = Math.max(0, frame - i * 5);
+            const t = Math.min(1, age / 20);
+            return (
+              <span key={i} style={{ opacity: t, transform: `translateY(${(1 - t) * 30}px)`, display: "inline-block" }}>{char}</span>
+            );
+          })}
         </div>
       </div>
     </AbsoluteFill>
@@ -408,3 +492,32 @@ npx remotion still src/index.ts AdVideo /tmp/telop-still-scene3.png --frame=[sce
 - Scene 3: [パターン名] — [1行コメント]
 Remotion Studio (http://localhost:3000) で動きを確認してください。
 ```
+
+---
+
+### Step 8: アニメーションのカスタマイズ（オプション）
+
+デフォルト実装後にユーザーがアニメーションを変更したい場合のフロー。
+
+#### 参考サイト
+- CodePen: https://codepen.io/search/pens?q=text+js+animation
+- anime.js: https://animejs.com/documentation/text
+
+#### 手順
+1. ユーザーが気に入ったエフェクトのURLまたはJSコードを提示する
+2. コードを解析して動きを把握する
+3. `useCurrentFrame()` で決定論的に再現する（setInterval・requestAnimationFrame・Math.random は使えない）
+4. 対象シーンのrender関数を差し替える
+
+#### useCurrentFrame()変換の原則
+| 元コード | 変換方法 |
+|---------|---------|
+| `setInterval(fn, ms)` | `Math.floor(frame / (ms/1000*30))` でtick数を計算 |
+| `requestAnimationFrame` | frameが毎フレーム1ずつ増えるので不要 |
+| `Math.random()` | `Math.sin(i * seed) * 43758.5453` の小数部で代替 |
+| `animation-delay: i * Nms` | `frame - i * Math.round(N/1000*30)` で各文字のローカルフレームを計算 |
+| CSS `@keyframes` | `interpolate` または `Math.sin/pow` で同等のイージングを実装 |
+
+#### 注意
+- canvasのgetImageData・ピクセル操作を使うエフェクトは再現困難。その場合は「似た雰囲気の別アプローチ」を提案する
+- 再帰的な状態（前フレームの値が次フレームに影響）を持つエフェクトも再現が難しい場合がある
